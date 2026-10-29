@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación Profunda del Estado de Ánimo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            padding-bottom: 4rem;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .peer:checked ~ .option-card {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .peer:checked ~ .option-card .option-text {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        .emoji-animate {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .btn-emerald {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-emerald:hover {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .progress-fill {
+            transition: width 0.4s ease-out;
+        }
+
+        .support-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .support-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-yellow-400 selection:text-black">
+
+    <div class="sticky-header py-4 px-6 mb-8">
+        <div class="max-w-3xl mx-auto flex flex-col gap-2">
+            <div class="flex justify-between items-center text-sm text-gray-300 font-medium">
+                <span>Progreso de evaluación</span>
+                <span id="progressText">0 de 10 completadas</span>
+            </div>
+            <div class="w-full bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
+                <div id="progressBar" class="progress-fill bg-gradient-to-r from-yellow-500 to-yellow-300 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4">
+        
+        <div class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-200 to-yellow-500 mb-3">
+                Check-in Emocional Integral
+            </h1>
+            <p class="text-gray-400">Selecciona la situación que mejor describa cómo te has sentido en las últimas semanas.</p>
+        </div>
+
+        <form id="moodForm" class="space-y-8">
+            <div id="questionsContainer"></div>
+
+            <div class="pt-6">
+                <button type="submit" id="btnSubmit" class="btn-emerald w-full py-4 rounded-xl text-lg font-bold text-white flex justify-center items-center gap-2 opacity-50 cursor-not-allowed pointer-events-none transition-all">
+                    <span>Generar Diagnóstico Completo</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </button>
+            </div>
+        </form>
+
+        <div id="resultsContainer" class="hidden glass-panel mt-10 rounded-2xl p-6 md:p-8 text-center animate-[popIn_0.5s_ease-out]">
+            <div id="resultIcon" class="text-6xl mb-4">✨</div>
+            <h2 id="resultTitle" class="text-3xl font-bold mb-2">Resultados</h2>
+            <p id="resultText" class="text-gray-300 mb-6 text-lg"></p>
+            
+            <div class="w-full bg-gray-800 rounded-full h-4 mb-2 overflow-hidden border border-gray-700">
+                <div id="resultBar" class="h-4 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 font-medium mb-10">
+                <span>Agotamiento Severo</span>
+                <span>Equilibrio Óptimo</span>
+            </div>
+
+            <!-- Directorio de Apoyo Dinámico -->
+            <div id="supportSection" class="hidden text-left border-t border-gray-700 pt-8 mt-6">
+                <h3 class="text-xl font-semibold mb-4 text-white flex items-center gap-2">
+                    <span>🆘</span> Líneas de Apoyo y Atención Psicológica
+                </h3>
+                <p class="text-sm text-gray-400 mb-6">No estás solo/a. Si sientes que la situación te sobrepasa, existen profesionales dispuestos a escucharte y ayudarte de forma gratuita y confidencial.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Líneas Gubernamentales -->
+                    <div class="support-card p-4 rounded-xl">
+                        <h4 class="font-semibold text-emerald-400 mb-1">Línea de Salud Mental (Bucaramanga)</h4>
+                        <p class="text-sm text-gray-300 mb-2">Atención de emergencias y apoyo psicosocial de la Alcaldía.</p>
+                        <a href="tel:106" class="inline-flex items-center gap-2 text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition-colors mb-2">
+                            📞 Línea 106
+                        </a>
+                        <br>
+                        <a href="tel:3185489377" class="inline-flex items-center gap-2 text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition-colors">
+                            📱 318 548 9377
+                        </a>
+                    </div>
+
+                    <!-- Líneas Institucionales UIS -->
+                    <div class="support-card p-4 rounded-xl">
+                        <h4 class="font-semibold text-blue-400 mb-1">Bienestar Estudiantil (UIS)</h4>
+                        <p class="text-sm text-gray-300 mb-2">Centro de Escucha y atención psicológica 24/7 para estudiantes.</p>
+                        <a href="tel:3174402158" class="inline-flex items-center gap-2 text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition-colors mb-2">
+                            📱 317 440 2158 (24/7)
+                        </a>
+                        <br>
+                        <a href="mailto:saludmental.apoyo@uis.edu.co" class="inline-flex items-center gap-2 text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm transition-colors">
+                            ✉️ saludmental.apoyo@uis.edu.co
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10">
+                <button type="button" onclick="location.reload()" class="text-sm text-gray-400 hover:text-white transition-colors underline">
+                    Realizar nueva evaluación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questionsData = [
+            {
+                id: 'energia', title: '1. Nivel de Energía Vital', text: '¿Cómo describirías tu nivel de energía y motivación al despertar?',
+                options: [
+                    { value: 1, emoji: '🪫', text: 'Agotado/a. Siento una fatiga profunda y me cuesta arrancar.' },
+                    { value: 2, emoji: '☕', text: 'Bajo. Dependo de estimulantes para funcionar y siento letargo.' },
+                    { value: 3, emoji: '🔋', text: 'Equilibrado. Tengo la energía necesaria para afrontar el día.' },
+                    { value: 4, emoji: '⚡', text: 'Vibrante. Me siento lleno/a de vitalidad y con ganas de actuar.' }
+                ]
+            },
+            {
+                id: 'estres', title: '2. Gestión del Estrés', text: 'Ante un imprevisto esta semana, tu reacción automática es:',
+                options: [
+                    { value: 1, emoji: '🌪️', text: 'Abrumarme rápidamente y sentir que pierdo el control.' },
+                    { value: 2, emoji: '😟', text: 'Preocuparme en exceso y darle muchas vueltas.' },
+                    { value: 3, emoji: '🧘‍♂️', text: 'Pausar, respirar y buscar alternativas lógicas.' },
+                    { value: 4, emoji: '🛠️', text: 'Verlo como un reto interesante que puedo resolver con agilidad.' }
+                ]
+            },
+            {
+                id: 'emocion', title: '3. Paisaje Emocional', text: 'El clima de tu estado de ánimo reciente sería:',
+                options: [
+                    { value: 1, emoji: '🌧️', text: 'Gris y tormentoso. Predomina la tristeza o irritabilidad.' },
+                    { value: 2, emoji: '🌥️', text: 'Nublado con claros. Tengo altibajos emocionales.' },
+                    { value: 3, emoji: '🌤️', text: 'Mayormente soleado. Siento tranquilidad y estabilidad.' },
+                    { value: 4, emoji: '☀️', text: 'Radiante. Experimento alegría y gratitud profunda.' }
+                ]
+            },
+            {
+                id: 'enfoque', title: '4. Concentración y Enfoque', text: '¿Qué tan fácil te resulta mantener la atención?',
+                options: [
+                    { value: 1, emoji: '🤯', text: 'Imposible. Mi mente salta de un pensamiento a otro.' },
+                    { value: 2, emoji: '🦋', text: 'Me distraigo con mucha facilidad.' },
+                    { value: 3, emoji: '🎯', text: 'Me concentro adecuadamente sin distracciones externas.' },
+                    { value: 4, emoji: '🧠', text: 'Entro en "flow" absoluto, perdiendo la noción del tiempo.' }
+                ]
+            },
+            {
+                id: 'descanso', title: '5. Calidad del Descanso', text: '¿Cómo sientes tu recuperación al dormir?',
+                options: [
+                    { value: 1, emoji: '🦉', text: 'Pésima. Me levanto peor de lo que me acuesto.' },
+                    { value: 2, emoji: '🥱', text: 'Regular. Siento que el sueño no es reparador.' },
+                    { value: 3, emoji: '🛌', text: 'Buena. Descanso las horas suficientes.' },
+                    { value: 4, emoji: '🌌', text: 'Excelente. Sueño profundo; despierto renovado/a.' }
+                ]
+            },
+            {
+                id: 'social', title: '6. Conexión Social', text: '¿Cómo estás manejando tus interacciones con otras personas?',
+                options: [
+                    { value: 1, emoji: '🚷', text: 'Me irrita la gente, evito mensajes y me aíslo.' },
+                    { value: 2, emoji: '🎭', text: 'Socializo por obligación, pero me drena la energía.' },
+                    { value: 3, emoji: '🤝', text: 'Disfruto de mi círculo cercano y me nutre conversar.' },
+                    { value: 4, emoji: '🫂', text: 'Siento empatía, apoyo a otros y disfruto conectar.' }
+                ]
+            },
+            {
+                id: 'futuro', title: '7. Percepción del Futuro', text: 'Cuando piensas en los próximos meses, tu sensación es:',
+                options: [
+                    { value: 1, emoji: '🌑', text: 'Desesperanza. Veo el futuro oscuro o inmanejable.' },
+                    { value: 2, emoji: '😰', text: 'Ansiedad. Me genera incertidumbre y miedo.' },
+                    { value: 3, emoji: '🧭', text: 'Realismo optimista. Confío en mis recursos.' },
+                    { value: 4, emoji: '🚀', text: 'Ilusión. Siento entusiasmo por mis metas.' }
+                ]
+            },
+            {
+                id: 'autocuidado', title: '8. Autocuidado y Hábitos', text: '¿Cómo estás tratando a tu propio cuerpo?',
+                options: [
+                    { value: 1, emoji: '🥀', text: 'Abandono. Descuido mis necesidades básicas.' },
+                    { value: 2, emoji: '🤖', text: 'Hago lo mínimo necesario para sobrevivir.' },
+                    { value: 3, emoji: '🥗', text: 'Intento nutrirme y mantener rutinas sanas.' },
+                    { value: 4, emoji: '🌱', text: 'Cuido mi cuerpo activamente, lo muevo y alimento con amor.' }
+                ]
+            },
+            {
+                id: 'autoestima', title: '9. Diálogo Interno', text: 'Si escucharas cómo te hablas a ti mismo/a, escucharías:',
+                options: [
+                    { value: 1, emoji: '⚔️', text: 'Un juez cruel. Me critico constantemente.' },
+                    { value: 2, emoji: '⚖️', text: 'Dudas. Me cuestiono mucho y me cuesta perdonarme.' },
+                    { value: 3, emoji: '🤍', text: 'Aceptación. Soy comprensivo/a con mis fallos.' },
+                    { value: 4, emoji: '👑', text: 'Apoyo incondicional. Celebro mis logros y virtudes.' }
+                ]
+            },
+            {
+                id: 'disfrute', title: '10. Capacidad de Disfrute', text: '¿Qué satisfacción experimentas con tus pasatiempos?',
+                options: [
+                    { value: 1, emoji: '🪨', text: 'Apatía total. Nada me produce placer.' },
+                    { value: 2, emoji: '📺', text: 'Me distraigo pasivamente, pero no hay gozo.' },
+                    { value: 3, emoji: '🎨', text: 'Me divierto y me ayudan a desconectar.' },
+                    { value: 4, emoji: '✨', text: 'Gozo profundo. Placer y gratitud en las pequeñas cosas.' }
+                ]
+            }
+        ];
+
+        const totalQuestions = questionsData.length;
+        let answeredQuestions = new Set();
+        const container = document.getElementById('questionsContainer');
+        const fragment = document.createDocumentFragment();
+
+        questionsData.forEach((q) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'glass-panel p-6 md:p-8 rounded-2xl relative overflow-hidden';
+            
+            let html = `
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-xl font-semibold text-yellow-400">${q.title}</h3>
+                    <div id="emoji-display-${q.id}" class="text-3xl opacity-0"></div>
+                </div>
+                <p class="text-gray-300 mb-6">${q.text}</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            `;
+
+            q.options.forEach((opt) => {
+                html += `
+                    <label class="cursor-pointer group relative">
+                        <input type="radio" name="${q.id}" value="${opt.value}" data-emoji="${opt.emoji}" class="peer sr-only" required>
+                        <div class="option-card h-full p-4 rounded-xl border border-white/10 bg-white/5 transition-all duration-300 flex items-start gap-3 hover:bg-white/10">
+                            <span class="text-2xl group-hover:scale-110 transition-transform">${opt.emoji}</span>
+                            <span class="option-text text-sm text-gray-400 transition-colors leading-relaxed">${opt.text}</span>
+                        </div>
+                    </label>
+                `;
+            });
+
+            html += `</div>`;
+            questionDiv.innerHTML = html;
+            fragment.appendChild(questionDiv);
+        });
+
+        container.appendChild(fragment);
+
+        const form = document.getElementById('moodForm');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        form.addEventListener('change', function(e) {
+            if(e.target.type === 'radio') {
+                const questionId = e.target.name;
+                const selectedEmoji = e.target.getAttribute('data-emoji');
+                
+                const emojiDisplay = document.getElementById(`emoji-display-${questionId}`);
+                emojiDisplay.innerHTML = selectedEmoji;
+                emojiDisplay.classList.remove('emoji-animate');
+                void emojiDisplay.offsetWidth;
+                emojiDisplay.classList.add('emoji-animate');
+
+                answeredQuestions.add(questionId);
+                const currentProgress = answeredQuestions.size;
+                const percentage = (currentProgress / totalQuestions) * 100;
+                
+                progressBar.style.width = `${percentage}%`;
+                progressText.innerText = `${currentProgress} de ${totalQuestions} completadas`;
+
+                if(currentProgress === totalQuestions) {
+                    btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    btnSubmit.classList.add('hover:scale-[1.02]');
+                }
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            let totalScore = 0;
+            const formData = new FormData(this);
+            for (let [key, value] of formData.entries()) {
+                totalScore += parseInt(value);
+            }
+
+            const maxScore = totalQuestions * 4;
+            const minScore = totalQuestions * 1;
+            const scorePercentage = ((totalScore - minScore) / (maxScore - minScore)) * 100;
+            mostrarResultados(totalScore, scorePercentage);
+        });
+
+        function mostrarResultados(score, percentage) {
+            form.style.display = 'none';
+            document.querySelector('.sticky-header').style.display = 'none';
+            
+            const resultsContainer = document.getElementById('resultsContainer');
+            const rTitle = document.getElementById('resultTitle');
+            const rText = document.getElementById('resultText');
+            const rIcon = document.getElementById('resultIcon');
+            const rBar = document.getElementById('resultBar');
+            const supportSection = document.getElementById('supportSection');
+
+            resultsContainer.classList.remove('hidden');
+            
+            setTimeout(() => {
+                rBar.style.width = `${percentage}%`;
+            }, 100);
+
+            if (score <= 16) {
+                rTitle.innerText = "Alerta de Agotamiento y Riesgo";
+                rTitle.className = "text-3xl font-bold mb-2 text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]";
+                rText.innerText = "Tus resultados indican un nivel de agotamiento profundo. Tu bienestar integral está comprometido. Es crucial hacer una pausa y buscar apoyo profesional.";
+                rIcon.innerText = "⚠️";
+                rBar.className = "h-4 rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-red-600 to-rose-400";
+                supportSection.classList.remove('hidden'); // Muestra las líneas de apoyo
+            } 
+            else if (score <= 28) {
+                rTitle.innerText = "Desgaste y Sobrecarga Moderada";
+                rTitle.className = "text-3xl font-bold mb-2 text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]";
+                rText.innerText = "Logras mantenerte a flote, pero a un costo emocional alto. Este es un punto de inflexión preventivo: necesitas priorizar tu descanso y retomar hábitos de autocuidado.";
+                rIcon.innerText = "⚖️";
+                rBar.className = "h-4 rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-orange-500 to-amber-300";
+                supportSection.classList.remove('hidden'); // Muestra las líneas de apoyo preventivamente
+            } 
+            else {
+                rTitle.innerText = "Equilibrio y Resiliencia Activa";
+                rTitle.className = "text-3xl font-bold mb-2 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]";
+                rText.innerText = "¡Excelente estado integral! Demuestras una gran capacidad de resiliencia y una gestión emocional saludable. Sigue manteniendo tus hábitos de autocuidado.";
+                rIcon.innerText = "🌟";
+                rBar.className = "h-4 rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-emerald-600 to-emerald-400";
+                supportSection.classList.add('hidden'); // Oculta las líneas si el estado es óptimo
+            }
+        }
+    </script>
+</body>
+</html>
